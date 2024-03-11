@@ -148,29 +148,4 @@ spec:
               configMap:
                 name: sync-nvd-script
                 defaultMode: 0777
-          restartPolicy: OnFailure          
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: reload-nvd-db
-spec:
-  template:
-    spec:
-      ttlSecondsAfterFinished: 3600
-      containers:
-        - name: sync
-          image: registry.access.redhat.com/ubi9/ubi-minimal:9.3
-          imagePullPolicy: IfNotPresent
-          command:
-            - /bin/sh
-            - /scripts/force_reload.sh
-          volumeMounts:
-            - name: script-cm
-              mountPath: /scripts
-      volumes:
-        - name: script-cm
-          configMap:
-            name: sync-nvd-script
-            defaultMode: 0777
-      restartPolicy: OnFailure
+          restartPolicy: OnFailure

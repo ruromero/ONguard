@@ -197,37 +197,6 @@ objects:
                     name: sync-nvd-script
                     defaultMode: 0777
               restartPolicy: OnFailure
-  - apiVersion: batch/v1
-    kind: Job
-    metadata:
-      name: force-reload-nvd-db
-    spec:
-      template:
-        spec:
-          ttlSecondsAfterFinished: 3600
-          containers:
-            - name: sync
-              image: quay.io/app-sre/ubi9-ubi-minimal:9.3
-              imagePullPolicy: IfNotPresent
-              command:
-                - /bin/sh
-                - /scripts/force_reload.sh
-              volumeMounts:
-                - name: script-cm
-                  mountPath: /scripts
-              resources:
-                limits:
-                  cpu: 500m
-                  memory: 512Mi
-                requests:
-                  cpu: 100m
-                  memory: 10Mi
-          volumes:
-            - name: script-cm
-              configMap:
-                name: sync-nvd-script
-                defaultMode: 0777
-          restartPolicy: OnFailure
 parameters:
   - name: APP_NAME
     displayName: Application name
