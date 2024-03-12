@@ -41,58 +41,58 @@ import jakarta.ws.rs.WebApplicationException;
 @ApplicationScoped
 public class NvdFallbackService implements FallbackHandler<NvdResponse> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(NvdFallbackService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(NvdFallbackService.class);
 
-    @Inject
-    VulnerabilityRepository repository;
+  @Inject
+  VulnerabilityRepository repository;
 
-    @Inject
-    ManagedExecutor executor;
+  @Inject
+  ManagedExecutor executor;
 
-    @Inject
-    NvdService nvdService;
+  @Inject
+  NvdService nvdService;
 
-    @ConfigProperty(name = "CircuitBreaker/delay", defaultValue = "30")
-    Long delay;
+  @ConfigProperty(name = "CircuitBreaker/delay", defaultValue = "30")
+  Long delay;
 
-    private void updateMetrics(String cveId) {
-        var metrics = nvdService.getCveMetrics(cveId);
-        if (metrics == null) {
-            LOGGER.debug("Unable to retrieve metrics from NVD for CVE {}", cveId);
-            return;
-        }
-        var vuln = repository.get(cveId);
-        if (vuln != null) {
-            var newVuln = Vulnerability.builder(vuln).metrics(metrics).lastModified(new Date()).build();
-            repository.save(newVuln);
-            repository.setAliases(List.of(cveId), cveId);
-        }
+  private void updateMetrics(String cveId) {
+    var metrics = nvdService.getCveMetrics(cveId);
+    if (metrics == null) {
+      LOGGER.debug("Unable to retrieve metrics from NVD for CVE {}", cveId);
+      return;
     }
-
-    @Override
-    public NvdResponse handle(ExecutionContext context) {
-        if(shouldHandle(context.getFailure())) {
-            Uni.createFrom()
-                .item((String) context.getParameters()[0])
-                .onItem().delayIt().by(Duration.ofSeconds(delay)).invoke(cveId -> updateMetrics(cveId))
-                .runSubscriptionOn(executor).subscribeAsCompletionStage();
-        }
-        return new NvdResponse(0, 0, 0, null, null, new Date(), Collections.emptyList());
+    var vuln = repository.get(cveId);
+    if (vuln != null) {
+      var newVuln = Vulnerability.builder(vuln).metrics(metrics).lastModified(new Date()).build();
+      repository.save(newVuln);
+      repository.setAliases(List.of(cveId), cveId);
     }
+  }
 
-    private boolean shouldHandle(Throwable failure) {
-        if(failure == null) {
-            return true;
-        }
-        var cause = failure;
-        if(failure.getCause() != null && !(failure instanceof WebApplicationException)) {
-            cause = failure.getCause();
-        }
-        if(cause instanceof WebApplicationException) {
-            var error = (WebApplicationException) cause;
-            var status = error.getResponse().getStatus();
-            return status != 404;
-        }
-        return true;
+  @Override
+  public NvdResponse handle(ExecutionContext context) {
+    if (shouldHandle(context.getFailure())) {
+      Uni.createFrom()
+          .item((String) context.getParameters()[0])
+          .onItem().delayIt().by(Duration.ofSeconds(delay)).invoke(cveId -> updateMetrics(cveId))
+          .runSubscriptionOn(executor).subscribeAsCompletionStage();
     }
+    return new NvdResponse(0, 0, 0, null, null, new Date(), Collections.emptyList());
+  }
+
+  private boolean shouldHandle(Throwable failure) {
+    if (failure == null) {
+      return true;
+    }
+    var cause = failure;
+    if (failure.getCause() != null && !(failure instanceof WebApplicationException)) {
+      cause = failure.getCause();
+    }
+    if (cause instanceof WebApplicationException) {
+      var error = (WebApplicationException) cause;
+      var status = error.getResponse().getStatus();
+      return status != 404;
+    }
+    return true;
+  }
 }
