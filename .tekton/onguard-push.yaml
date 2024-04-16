@@ -185,7 +185,7 @@ spec:
         - name: name
           value: prefetch-dependencies
         - name: bundle
-          value: quay.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0.1@sha256:52fc8de77082ed1bd4b36a54e7915a43026930a941da1453f27c2ddebd64158a
+          value: quay.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0.1@sha256:42a714f3e35a8fdce8ee986e6fb475bc6eee21b3fda506d9bfc062bcb630b5aa
         - name: kind
           value: task
         resolver: bundles
@@ -240,7 +240,7 @@ spec:
         - name: name
           value: buildah-8gb
         - name: bundle
-          value: quay.io/redhat-appstudio-tekton-catalog/task-buildah-8gb:0.1@sha256:7789d841461eea43a1dc0b798c1f431467edebc1b324188df0382004bac98026
+          value: quay.io/redhat-appstudio-tekton-catalog/task-buildah-8gb:0.1@sha256:5440c58fd56dbc09dc2f04689bbe1482d0e06df41afc5fe4a83a0d41745b6ae5
         - name: kind
           value: task
         resolver: bundles
