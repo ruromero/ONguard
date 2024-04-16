@@ -24,6 +24,7 @@ import com.redhat.ecosystemappeng.onguard.model.osv.QueryRequest;
 import com.redhat.ecosystemappeng.onguard.model.osv.QueryResult;
 
 import io.quarkus.cache.CacheResult;
+import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -35,11 +36,11 @@ public interface OsvApi {
     
     @GET
     @Path("/vulns/{vulnId}")
-    OsvVulnerability getVuln(@PathParam("vulnId") String vulnId);
+    Uni<OsvVulnerability> getVuln(@PathParam("vulnId") String vulnId);
 
     @POST
     @Path("/querybatch")
     @CacheResult(cacheName = "osvQueryBatch")
-    QueryResult queryBatch(QueryRequest request);
+    Uni<QueryResult> queryBatch(QueryRequest request);
 
 }

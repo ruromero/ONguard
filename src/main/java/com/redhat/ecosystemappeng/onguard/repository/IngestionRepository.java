@@ -15,9 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.redhat.ecosystemappeng.onguard.model.nvd;
+package com.redhat.ecosystemappeng.onguard.repository;
 
-public record Cvss_V30(String source, String type, CvssData cvssData, Float exploitabilityScore, Float impactScore) {
+import com.redhat.ecosystemappeng.onguard.model.Ingestion;
 
-    
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+
+public interface IngestionRepository {
+
+  Uni<Ingestion> getSync();
+
+  Uni<Ingestion> saveSync(Ingestion ingestion);
+
+  Uni<Ingestion> updateSync(Ingestion ingestion);
+
+  Uni<Void> deleteAll();
+
+  Multi<String> exportAliases();
+
+  Multi<String> exportVulnerabilities();
+
+  Uni<String> exportIngestion();
+
+  Uni<Void> importScript(byte[] data);
+
 }

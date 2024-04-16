@@ -15,9 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.redhat.ecosystemappeng.onguard.model.nvd;
+package com.redhat.ecosystemappeng.onguard.model.osv;
 
-public record Cvss_V31(String source, String type, CvssData cvssData, Float exploitabilityScore, Float impactScore) {
-
-    
+public record Severity(String type, String score) {
+  
 }

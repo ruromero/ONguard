@@ -19,6 +19,6 @@ package com.redhat.ecosystemappeng.onguard.model.nvd;
 
 import java.util.Date;
 
-public record NvdCve(String id, Metrics metrics, String vulnStatus, Date publisihed, Date lastModified) {
+public record NvdCve(String id, Date publisihed, Date lastModified) {
     
 }

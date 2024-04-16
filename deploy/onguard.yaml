@@ -30,6 +30,11 @@ spec:
             memory: "128Mi"
             cpu: "500m"
         env:
+          - name: API_NVD_APIKEY
+            valueFrom:
+              secretKeyRef:
+                name: exhort-onguard-secret
+                key: api-nvd-apikey
           - name: DB_REDIS_HOST
             valueFrom:
               secretKeyRef:
@@ -40,11 +45,6 @@ spec:
               secretKeyRef:
                 name: exhort-onguard-secret
                 key: db.port
-          - name: API_NVD_APIKEY
-            valueFrom:
-              secretKeyRef:
-                name: exhort-onguard-secret
-                key: api-nvd-apikey
         livenessProbe:
           httpGet:
             path: /q/health/live
@@ -76,76 +76,80 @@ spec:
   selector:
     app: onguard
 ---
-apiVersion: v1
-kind: ConfigMap
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: sync-nvd-script
-data:
-  sync.sh: |
-    #!/bin/bash
-    set -euo pipefail
-    endpoint=http://onguard:9000/load
-    status_code=$(curl --write-out '%{http_code}' --silent --output /dev/null ${endpoint})
-
-    if [ ${status_code} == '404' ]; then
-        echo Load data is empty
-        curl -s -XPOST ${endpoint}
-    elif [ ${status_code} == '200' ]; then
-        load=$(curl -s ${endpoint})
-        echo ${load}
-        status=$(echo "$load" | sed -E 's/.*"status":"?([^,"]*)"?.*/\1/')
-        if [[ $status == "COMPLETED" ]]; then
-            completed=$(echo "$load" | sed -E 's/.*"completed":"?([^,"]*)"?.*/\1/')
-            echo "Completed load on ${completed}. Sync with most recent data"
-            curl -s -XPOST ${endpoint}?since=${completed}
-        elif [[ $status == "COMPLETED_WITH_ERRORS" ]]; then
-            echo "Previous load completed with errors. Resume"
-            curl -s -XPOST ${endpoint}
-        elif [[ $status == "PROCESSING" ]]; then
-            echo "There is an ongoing load. Skip"
-        else
-            echo "Unknown load status ${load}. Force reload"
-            curl -s -XPOST ${endpoint}?reload=true
-        fi
-    else
-        echo "Unexpected status code ${status_code}. Skip load and sync."
-    fi
-  force_reload.sh: |
-    #!/bin/bash
-    set -euo pipefail
-    endpoint=http://onguard:9000/load
-    force_reload_date=2024-02-20T00:00:00
-
-    for i in {1..5}; do
-      echo retry $i
-      curl -s -XPOST ${endpoint}?reload_before=${force_reload_date} && exit 0
-      sleep 1
-    done
-    exit 1
----
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: sync-nvd-db
+  name: onguard-ingester
+  labels:
+    app: onguard-ingester
 spec:
-  schedule: "*/30 * * * *"
-  jobTemplate:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: onguard-ingester
+  template:
+    metadata:
+      labels:
+        app: onguard-ingester
     spec:
-      template:
-        spec:
-          containers:
-            - name: sync
-              image: registry.access.redhat.com/ubi9/ubi-minimal:9.3
-              imagePullPolicy: IfNotPresent
-              command:
-                - /bin/sh
-                - /scripts/sync.sh
-              volumeMounts:
-                - name: script-cm
-                  mountPath: /scripts
-          volumes:
-            - name: script-cm
-              configMap:
-                name: sync-nvd-script
-                defaultMode: 0777
-          restartPolicy: OnFailure
+      containers:
+      - name: onguard-ingester
+        image: onguard:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: management
+          containerPort: 9000
+          protocol: TCP
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        env:
+          - name: DB_REDIS_HOST
+            valueFrom:
+              secretKeyRef:
+                name: exhort-onguard-secret
+                key: db.host
+          - name: DB_REDIS_PORT
+            valueFrom:
+              secretKeyRef:
+                name: exhort-onguard-secret
+                key: db.port
+          - name: API_NVD_APIKEY
+            valueFrom:
+              secretKeyRef:
+                name: exhort-onguard-secret
+                key: api-nvd-apikey
+          - name: QUARKUS_PROFILE
+            value: ingester,prod
+          - name: ONGUARD_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: exhort-onguard-secret
+                key: admin.pwd
+        livenessProbe:
+          httpGet:
+            path: /q/health/live
+            port: 9000
+          initialDelaySeconds: 1
+        readinessProbe:
+          httpGet:
+            path: /q/health/ready
+            port: 9000
+          initialDelaySeconds: 5
+          periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: onguard-ingester
+  labels:
+    app: onguard-ingester
+spec:
+  ports:
+  - name: management
+    port: 9000
+    protocol: TCP
+    targetPort: 9000
+  selector:
+    app: onguard-ingester

@@ -15,10 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.redhat.ecosystemappeng.onguard.model.nvd;
+package com.redhat.ecosystemappeng.onguard.service.osv;
 
 import java.util.List;
 
-public record Metrics(List<Cvss_V31> cvssMetricV31, List<Cvss_V30> cvssMetricV30, List<Cvss_V2> cvssMetricV2) {
-    
+import com.redhat.ecosystemappeng.onguard.model.Vulnerability;
+
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+
+public interface OsvService {
+
+  Multi<List<String>> query(List<String> purls);
+
+  Uni<Vulnerability> get(String alias);
+  
 }

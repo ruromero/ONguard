@@ -23,7 +23,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
-import static com.github.tomakehurst.wiremock.client.WireMock.status;
+import static com.github.tomakehurst.wiremock.client.WireMock.serviceUnavailable;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -31,8 +31,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.eclipse.jetty.http.HttpHeader;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,7 +45,8 @@ import jakarta.ws.rs.core.MediaType;
 
 public class WireMockExtensions implements QuarkusTestResourceLifecycleManager {
 
-  private static final String API_KEY_PARAM = "apiKey";
+  public static final String CONTENT_TYPE = "Content-Type";
+  public static final String API_KEY_PARAM = "apiKey";
   public static final String CVE_PARAM = "cveId";
   public static final String NVD_API_KEY = "nvd-api-123";
   public static final String VALID_CVE = "CVE-2022-24684";
@@ -55,7 +54,8 @@ public class WireMockExtensions implements QuarkusTestResourceLifecycleManager {
   public static final String NOT_FOUND = "not_found";
 
   public static final String NVD_API_PATH = "/rest/json/cves/2.0";
-  public static final String OSV_API_PATH = "/v1/querybatch";
+  public static final String OSV_QUERY_API_PATH = "/v1/querybatch";
+  public static final String OSV_VULN_API_PATH = "/v1/vulns/{id}";
 
   public static final String PURL_WITH_VULNS = "pkg:maven/io.smallrye.config/smallrye-config@3.3.2.redhat-00001?repository_url=https%3A%2F%2Fmaven.repository.redhat.com%2Fga%2F&type=jar";
   public static final String PURL_WITH_ERROR = "pkg:maven/com.example/error@0.0.0?type=jar";
@@ -66,21 +66,17 @@ public class WireMockExtensions implements QuarkusTestResourceLifecycleManager {
   public Map<String, String> start() {
     server.start();
 
-    server.stubFor(get(urlPathEqualTo(NVD_API_PATH))
-        .withHeader(API_KEY_PARAM, equalTo(NVD_API_KEY))
-        .withQueryParam(CVE_PARAM, equalTo(VALID_CVE))
-        .willReturn(ok().withBodyFile("nvd-data/" + VALID_CVE + ".json")
-            .withHeader(HttpHeader.CONTENT_TYPE.asString(), MediaType.APPLICATION_JSON)));
+    stubNvd();
+    stubOsv();
 
-    server.stubFor(get(urlPathEqualTo(NVD_API_PATH))
-        .withHeader(API_KEY_PARAM, equalTo(NVD_API_KEY))
-        .withQueryParam(CVE_PARAM, equalTo(ERROR_503_CVE))
-        .willReturn(status(503)));
+    Map<String, String> props = new HashMap<>();
+    props.put("quarkus.rest-client.nvd-api.url", server.baseUrl());
+    props.put("quarkus.rest-client.osv-api.url", server.baseUrl());
+    props.put("api.nvd.apikey", NVD_API_KEY);
+    return props;
+  }
 
-    server.stubFor(get(urlPathEqualTo(NVD_API_PATH))
-        .withHeader(API_KEY_PARAM, equalTo(NVD_API_KEY))
-        .withQueryParam(CVE_PARAM, equalTo(NOT_FOUND))
-        .willReturn(status(404)));
+  private void stubNvd() {
 
     server.stubFor(get(urlPathEqualTo(NVD_API_PATH))
         .withHeader(API_KEY_PARAM, equalTo(NVD_API_KEY))
@@ -89,7 +85,7 @@ public class WireMockExtensions implements QuarkusTestResourceLifecycleManager {
         .withQueryParam("lastModStartDate", equalTo("start_date"))
         .withQueryParam("lastModEndDate", equalTo("end_date"))
         .willReturn(ok().withBodyFile("nvd-data/" + VALID_CVE + ".json")
-            .withHeader(HttpHeader.CONTENT_TYPE.asString(), MediaType.APPLICATION_JSON)));
+            .withHeader(CONTENT_TYPE, MediaType.APPLICATION_JSON)));
 
     server.stubFor(get(urlPathEqualTo(NVD_API_PATH))
         .inScenario("List Retry")
@@ -99,7 +95,7 @@ public class WireMockExtensions implements QuarkusTestResourceLifecycleManager {
         .withQueryParam("resultsPerPage", equalTo("200"))
         .withQueryParam("lastModStartDate", equalTo("start_date"))
         .withQueryParam("lastModEndDate", equalTo("end_date"))
-        .willReturn(status(503))
+        .willReturn(serviceUnavailable())
         .willSetStateTo("Next"));
 
     server.stubFor(get(urlPathEqualTo(NVD_API_PATH))
@@ -111,15 +107,8 @@ public class WireMockExtensions implements QuarkusTestResourceLifecycleManager {
         .withQueryParam("lastModStartDate", equalTo("start_date"))
         .withQueryParam("lastModEndDate", equalTo("end_date"))
         .willReturn(ok().withBodyFile("nvd-data/" + VALID_CVE + ".json")
-            .withHeader(HttpHeader.CONTENT_TYPE.asString(), MediaType.APPLICATION_JSON)));
+            .withHeader(CONTENT_TYPE, MediaType.APPLICATION_JSON)));
 
-    stubOsv();
-
-    Map<String, String> props = new HashMap<>();
-    props.put("quarkus.rest-client.nvd-api.url", server.baseUrl());
-    props.put("quarkus.rest-client.osv-api.url", server.baseUrl());
-    props.put("api.nvd.apikey", NVD_API_KEY);
-    return props;
   }
 
   private void stubOsv() {
@@ -128,16 +117,16 @@ public class WireMockExtensions implements QuarkusTestResourceLifecycleManager {
     var reqWithError = new QueryRequest(List.of(new QueryRequestItem(new PackageRef(PURL_WITH_ERROR))));
 
     try {
-      server.stubFor(post(urlPathEqualTo(OSV_API_PATH))
+      server.stubFor(post(urlPathEqualTo(OSV_QUERY_API_PATH))
           .willReturn(ok().withBodyFile("osv-data/empty.json")
-          .withHeader(HttpHeader.CONTENT_TYPE.asString(), MediaType.APPLICATION_JSON)));
-      
-      server.stubFor(post(urlPathEqualTo(OSV_API_PATH))
+              .withHeader(CONTENT_TYPE, MediaType.APPLICATION_JSON)));
+
+      server.stubFor(post(urlPathEqualTo(OSV_QUERY_API_PATH))
           .withRequestBody(equalToJson(mapper.writeValueAsString(reqWithVulns)))
           .willReturn(ok().withBodyFile("osv-data/vulnerability.json")
-              .withHeader(HttpHeader.CONTENT_TYPE.asString(), MediaType.APPLICATION_JSON)));
+              .withHeader(CONTENT_TYPE, MediaType.APPLICATION_JSON)));
 
-      server.stubFor(post(urlPathEqualTo(OSV_API_PATH))
+      server.stubFor(post(urlPathEqualTo(OSV_QUERY_API_PATH))
           .withRequestBody(equalToJson(mapper.writeValueAsString(reqWithError))).willReturn(serverError()));
 
     } catch (JsonProcessingException e) {

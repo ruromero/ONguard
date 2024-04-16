@@ -118,96 +118,143 @@ objects:
               imagePullPolicy: Always
           restartPolicy: Always
           serviceAccountName: '${SERVICE_ACCOUNT_NAME}'
-  - apiVersion: v1
-    kind: ConfigMap
+  - kind: Service
+    apiVersion: v1
     metadata:
-      name: sync-nvd-script
-    data:
-      sync.sh: |
-        #!/bin/bash
-        set -euo pipefail
-        endpoint=http://${SERVICE_NAME}:${MANAGEMENT_PORT}/load
-        status_code=$(curl --write-out '%{http_code}' --silent --output /dev/null ${endpoint})
-
-        if [ ${status_code} == '404' ]; then
-            echo Load data is empty
-            curl -s -XPOST ${endpoint}
-        elif [ ${status_code} == '200' ]; then
-            load=$(curl -s ${endpoint})
-            echo ${load}
-            status=$(echo "$load" | sed -E 's/.*"status":"?([^,"]*)"?.*/\1/')
-            if [[ $status == "COMPLETED" ]]; then
-                completed=$(echo "$load" | sed -E 's/.*"completed":"?([^,"]*)"?.*/\1/')
-                echo "Completed load on ${completed}. Sync with most recent data"
-                curl -s -XPOST ${endpoint}?since=${completed}
-            elif [[ $status == "COMPLETED_WITH_ERRORS" ]]; then
-                echo "Previous load completed with errors. Resume"
-                curl -s -XPOST ${endpoint}
-            elif [[ $status == "PROCESSING" ]]; then
-                echo "There is an ongoing load. Skip"
-            else
-                echo "Unknown load status ${load}. Force reload."
-                curl -s -XPOST ${endpoint}?reload=true
-            fi
-        else
-            echo "Unexpected status code ${status_code}. Skip load and sync."
-        fi
-      force_reload.sh: |
-        #!/bin/bash
-        set -euo pipefail
-        endpoint=http://onguard:9000/load
-        force_reload_date=2024-02-20T00:00:00
-
-        for i in {1..5}; do
-          echo retry $i
-          curl -s -XPOST ${endpoint}?reload_before=${force_reload_date} && exit 0
-          sleep 1
-        done
-        exit 1
-  - apiVersion: batch/v1
-    kind: CronJob
-    metadata:
-      name: sync-nvd-db
+      name: '${ING_SERVICE_NAME}'
+      labels:
+        app-name: '${ING_APP_NAME}'
     spec:
-      schedule: "*/30 * * * *"
-      jobTemplate:
+      ports:
+        - name: http
+          protocol: TCP
+          appProtocol: http
+          port: '${{SERVICE_PORT}}'
+          targetPort: http
+        - name: management
+          protocol: TCP
+          appProtocol: http
+          port: '${{MANAGEMENT_PORT}}'
+          targetPort: management
+      selector:
+        app: '${ING_APP_NAME}'
+  - kind: Deployment
+    apiVersion: apps/v1
+    metadata:
+      name: '${ING_APP_NAME}'
+    spec:
+      replicas: '${{REPLICAS}}'
+      selector:
+        matchLabels:
+          app: '${ING_APP_NAME}'
+      template:
+        metadata:
+          labels:
+            app: '${ING_APP_NAME}'
         spec:
-          template:
-            spec:
-              containers:
-                - name: sync
-                  image: quay.io/app-sre/ubi9-ubi-minimal:9.3
-                  imagePullPolicy: IfNotPresent
-                  command:
-                    - /bin/sh
-                    - /scripts/sync.sh
-                  volumeMounts:
-                    - name: script-cm
-                      mountPath: /scripts
-                  resources:
-                    limits:
-                      cpu: 500m
-                      memory: 512Mi
-                    requests:
-                      cpu: 100m
-                      memory: 10Mi
-              volumes:
-                - name: script-cm
-                  configMap:
-                    name: sync-nvd-script
-                    defaultMode: 0777
-              restartPolicy: OnFailure
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                        - '${ING_APP_NAME}'
+                    topologyKey: kubernetes.io/hostname
+                  weight: 90
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                        - '${ING_APP_NAME}'
+                    topologyKey: topology.kubernetes.io/zone
+                  weight: 100
+          containers:
+            - name: app
+              image: '${IMAGE}:${IMAGE_TAG}'
+              livenessProbe:
+                httpGet:
+                  path: /q/health/live
+                  port: '${{MANAGEMENT_PORT}}'
+                initialDelaySeconds: 15
+                periodSeconds: 20
+              readinessProbe:
+                httpGet:
+                  path: /q/health/ready
+                  port: '${{MANAGEMENT_PORT}}'
+                initialDelaySeconds: 5
+                periodSeconds: 10
+              ports:
+                - name: http
+                  containerPort: '${{SERVICE_PORT}}'
+                  protocol: TCP
+                - name: management
+                  containerPort: '${{MANAGEMENT_PORT}}'
+                  protocol: TCP
+              env:
+                - name: API_NVD_APIKEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: exhort-secret
+                      key: api-nvd-apikey
+                - name: DB_REDIS_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: '${ELASTICACHE_SECRET}'
+                      key: db.endpoint
+                - name: DB_REDIS_PORT
+                  valueFrom:
+                    secretKeyRef:
+                      name: '${ELASTICACHE_SECRET}'
+                      key: db.port
+                - name: QUARKUS_HTTP_PORT
+                  value: '8080'
+                - name: QUARKUS_MANAGEMENT_PORT
+                  value: '9000'
+                - name: QUARKUS_PROFILE
+                  value: ingester,prod
+                - name: ONGUARD_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: exhort-secret
+                      key: admin.pwd
+              securityContext:
+                runAsNonRoot: true
+              resources:
+                limits:
+                  cpu: ${CPU_LIMIT}
+                  memory: ${MEMORY_LIMIT}
+                requests:
+                  cpu: ${CPU_REQUEST}
+                  memory: ${MEMORY_REQUEST}
+              imagePullPolicy: Always
+          restartPolicy: Always
+          serviceAccountName: '${SERVICE_ACCOUNT_NAME}'
 parameters:
   - name: APP_NAME
     displayName: Application name
     description: Application name
     value: onguard
     required: true
+  - name: ING_APP_NAME
+    displayName: Ingester Application name
+    description: Ingester Application name
+    value: onguard-ingester
+    required: true
   - name: REPLICAS
     displayName: Replicas
     description: Number of desired pods
     value: '1'
     required: true
+  - name: ING_REPLICAS
+    displayName: Ingester Replicas
+    description: Number of desired pods for the ingester service
+    value: '1'
+    required: true 
   - name: IMAGE
     displayName: Container image name
     description: Container image name
@@ -231,6 +278,11 @@ parameters:
     displayName: Service name
     description: Service name
     value: onguard
+    required: true
+  - name: ING_SERVICE_NAME
+    displayName: Ingester Service Name
+    description: Ingester Service Name
+    value: onguard-ingester
     required: true
   - name: SERVICE_PORT
     displayName: Service port
