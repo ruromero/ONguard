@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.redhat.ecosystemappeng.onguard</groupId>
   <artifactId>onguard</artifactId>
-  <version>1.0.6-SNAPSHOT</version>
+  <version>1.0.6</version>
   <name>ONGuard</name>
   <description>Red Hat Trusted Profile Analyser :: Exhort :: ONGuard</description>
   <url>https://github.com/RHEcosystemAppEng/onguard</url>
@@ -51,7 +51,7 @@
     <url>https://github.com/RHEcosystemAppEng/onguard</url>
     <connection>scm:git:git@github.com:RHEcosystemAppEng/onguard.git</connection>
     <developerConnection>scm:git:git@github.com:RHEcosystemAppEng/onguard.git</developerConnection>
-    <tag>v1.0.4</tag>
+    <tag>v1.0.6</tag>
   </scm>
 
   <dependencyManagement>
