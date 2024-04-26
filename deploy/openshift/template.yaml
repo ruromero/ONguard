@@ -272,7 +272,7 @@ parameters:
   - name: ELASTICACHE_SECRET
     displayName: Elasticache Secret
     description: Name of the secret containing the Elasticache settings
-    value: exhort-elasticache
+    value: onguard-elasticache
     required: true
   - name: SERVICE_NAME
     displayName: Service name
