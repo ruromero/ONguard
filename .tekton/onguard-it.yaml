@@ -1,0 +1,78 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: onguard-tests
+spec:
+  description: >-
+    Base application test including default integration tests using a Redis instance.
+  params:
+    - name: SNAPSHOT
+      description: A list of container images that should undergo testing
+      type: string
+    - name: GIT_URL
+      description: URL of the GIT repository that contains the tests.
+      type: string
+    - name: GIT_REF
+      default: "main"
+      description: Branch of the git repository used containing the tests
+      type: string
+  tasks:
+    - name: clone-repository
+      params:
+      - name: url
+        value: $(params.GIT_URL)
+      - name: revision
+        value: $(params.GIT_REF)
+      runAfter:
+      - init
+      taskRef:
+        params:
+        - name: name
+          value: git-clone
+        - name: bundle
+          value: quay.io/redhat-appstudio-tekton-catalog/task-git-clone:0.1@sha256:30709df067659a407968154fd39e99763823d8ecfc6b5cd00a55b68818ec94ba
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(tasks.init.results.build)
+        operator: in
+        values:
+        - "true"
+      workspaces:
+      - name: output
+        workspace: workspace
+      - name: basic-auth
+        workspace: git-auth
+    - name: run-tests
+      runAfter:
+        - clone-repository
+      taskSpec:
+        steps:
+          - image: registry.redhat.io/quarkus/mandrel-23-rhel8:23.0
+            name: builder
+            workingDir: $(workspaces.source.path)/source
+            script: ./mvnw verify -Pnative -Dquarkus.redis.hosts=redis://localhost/
+            computeResources:
+              limits:
+                memory: 8Gi
+              requests:
+                memory: 6Gi
+        sidecars:
+          - image: docker.io/redis/redis-stack:7.2.0-v7
+            name: redis-stack
+      workspaces:
+        - name: source
+          workspace: workspace
+  workspaces:
+  - name: workspace
+    volumeClaimTemplate:
+      metadata:
+        creationTimestamp: null
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+      status: {}
