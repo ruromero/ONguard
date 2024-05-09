@@ -71,30 +71,12 @@ The final result of the aggregated data will look like this:
                     "versions": []
                 }
             ],
-            "metrics": {
-                "cvssMetricV31": [
-                    {
-                        "source": "nvd@nist.gov",
-                        "type": "Primary",
-                        "cvssData": {
-                            "version": "3.1",
-                            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
-                            "attackVector": "NETWORK",
-                            "attackComplexity": "HIGH",
-                            "privilegesRequired": "NONE",
-                            "userInteraction": "NONE",
-                            "scope": "UNCHANGED",
-                            "confidentialityImpact": "HIGH",
-                            "integrityImpact": "HIGH",
-                            "availabilityImpact": "HIGH",
-                            "baseScore": 8.1,
-                            "baseSeverity": "HIGH"
-                        },
-                        "exploitabilityScore": 2.2,
-                        "impactScore": 5.9
-                    }
-                ]
-            }
+            "severity": [
+                {
+                    "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+                    "type": "CVSS_V3"
+                }
+            ]
         }
     ]
 }
