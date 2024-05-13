@@ -30,7 +30,7 @@
     <impsort-maven-plugin.version>1.9.0</impsort-maven-plugin.version>
 
     <!-- Dependencies -->
-    <quarkus.platform.version>3.9.1</quarkus.platform.version>
+    <quarkus.platform.version>3.9.5</quarkus.platform.version>
     <wiremock.version>3.4.2</wiremock.version>
   </properties>
 
