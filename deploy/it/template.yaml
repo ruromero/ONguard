@@ -108,10 +108,7 @@ objects:
                   protocol: TCP
               env:
                 - name: API_NVD_APIKEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: onguard-secret
-                      key: api-nvd-apikey
+                  value: '${API_NVD_KEY}'
                 - name: DB_REDIS_HOST
                   value: '${REDIS_SERVICE_NAME}'
                 - name: DB_REDIS_PORT
@@ -209,3 +206,7 @@ parameters:
     value: trusted-content-onguard-stage
     displayName: Project name (default -- trusted-content-onguard-stage)
     description: 'Project name'
+  - name: API_NVD_KEY
+    required: true
+    displayName: API Key for the NVD web service
+    description: API KEY for the NVD web service
