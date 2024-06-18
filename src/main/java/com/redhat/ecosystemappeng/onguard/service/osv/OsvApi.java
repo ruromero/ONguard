@@ -19,24 +19,17 @@ package com.redhat.ecosystemappeng.onguard.service.osv;
 
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
-import com.redhat.ecosystemappeng.onguard.model.osv.OsvVulnerability;
 import com.redhat.ecosystemappeng.onguard.model.osv.QueryRequest;
 import com.redhat.ecosystemappeng.onguard.model.osv.QueryResult;
 
 import io.quarkus.cache.CacheResult;
 import io.smallrye.mutiny.Uni;
-import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
 
 @Path("/v1")
 @RegisterRestClient(configKey = "osv-api")
 public interface OsvApi {
-    
-    @GET
-    @Path("/vulns/{vulnId}")
-    Uni<OsvVulnerability> getVuln(@PathParam("vulnId") String vulnId);
 
     @POST
     @Path("/querybatch")

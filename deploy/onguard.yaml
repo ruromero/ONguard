@@ -30,11 +30,6 @@ spec:
             memory: "128Mi"
             cpu: "500m"
         env:
-          - name: API_NVD_APIKEY
-            valueFrom:
-              secretKeyRef:
-                name: exhort-onguard-secret
-                key: api-nvd-apikey
           - name: DB_REDIS_HOST
             valueFrom:
               secretKeyRef:
@@ -75,81 +70,3 @@ spec:
     targetPort: 9000
   selector:
     app: onguard
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: onguard-ingester
-  labels:
-    app: onguard-ingester
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: onguard-ingester
-  template:
-    metadata:
-      labels:
-        app: onguard-ingester
-    spec:
-      containers:
-      - name: onguard-ingester
-        image: onguard:latest
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: management
-          containerPort: 9000
-          protocol: TCP
-        resources:
-          limits:
-            memory: "128Mi"
-            cpu: "500m"
-        env:
-          - name: DB_REDIS_HOST
-            valueFrom:
-              secretKeyRef:
-                name: exhort-onguard-secret
-                key: db.host
-          - name: DB_REDIS_PORT
-            valueFrom:
-              secretKeyRef:
-                name: exhort-onguard-secret
-                key: db.port
-          - name: API_NVD_APIKEY
-            valueFrom:
-              secretKeyRef:
-                name: exhort-onguard-secret
-                key: api-nvd-apikey
-          - name: QUARKUS_PROFILE
-            value: ingester,prod
-          - name: ONGUARD_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: exhort-onguard-secret
-                key: admin.pwd
-        livenessProbe:
-          httpGet:
-            path: /q/health/live
-            port: 9000
-          initialDelaySeconds: 1
-        readinessProbe:
-          httpGet:
-            path: /q/health/ready
-            port: 9000
-          initialDelaySeconds: 5
-          periodSeconds: 20
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: onguard-ingester
-  labels:
-    app: onguard-ingester
-spec:
-  ports:
-  - name: management
-    port: 9000
-    protocol: TCP
-    targetPort: 9000
-  selector:
-    app: onguard-ingester

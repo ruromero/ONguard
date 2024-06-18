@@ -6,13 +6,12 @@ metadata:
   supportUrl: https://github.com/RHEcosystemAppEng/onguard/issues
   website: https://github.com/RHEcosystemAppEng/onguard
   displayName: ONGUard
-  description: ONGuard Service that aggregates data from OSV and NVD
+  description: ONGuard Service that aggregates data from OSV
   tags:
     - Exhort
     - RHTPA
     - Java
     - Quarkus
-    - NVD
     - OSV
   projectType: Quarkus
   language: Java

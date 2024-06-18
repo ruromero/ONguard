@@ -1,6 +1,6 @@
 # ONGuard
 
-The ONGuard (OSV - NVD Guard) service integrates OSV and NVD in order to retrieve CVE vulnerabilities from
+The ONGuard (OSV Guard) service integrates OSV in order to retrieve CVE vulnerabilities from
 the given set of package urls (purls).
 
 Upon receiving a collection of `purls`:
@@ -42,17 +42,15 @@ the OSV Service will return with a collection of vulnerabilities.
 ```
 
 We need to expand each of these vulnerability IDs and for that the service will call retrieve the OSV data
-that contains useful remediation information, aliases (including the CVE), summary and title but we also need to
-retrieve the CVSS metrics and this data is retrieved from the NVD service.
+that contains useful remediation information, aliases (including the CVE), summary, title and metrics.
 
 That means the service has to perform 2 requests:
 - OSV /vulns/{vulnId}
-- NVD /rest/json/cves/2.0?cveId={cveId}
 
-As you can imagine. That implies (2 * number of vulnerabilities) + 1 requests for each request. Where in a normal-sized
-Java project with 150 dependencies (direct and transitive) will be 201 HTTP requests.
+As you can imagine. That implies (number of vulnerabilities) + 1 requests for each request. Where in a normal-sized
+Java project with 150 dependencies (direct and transitive) will be 101 HTTP requests.
 
-For that we have added a Redis cache in order to save the aggregated data and also to cache the requests to OSV.
+For that we have added a Redis cache in order to cache the individual requests to OSV.
 
 The final result of the aggregated data will look like this:
 
@@ -111,13 +109,6 @@ The OpenAPI Schema can be retrieved in the management endpoint at http://localho
 
 ## Running the application
 
-### Required parameters
-
-The NVD database has a rate limit that is more permissive when using an api Key. You can get one by filling in [this form](https://nvd.nist.gov/developers/request-an-api-key)
-
-Once you apply and receive it you can configure it with the following configuration parameter: `api.nvd.key=<your_api_key>`
-
-
 ### Running the application locally
 
 The application depends on Redis and uses the JSON capability. You can either connect to an existing instance or use the `TestContainers` framework to spin up one for you.
@@ -127,7 +118,7 @@ The application depends on Redis and uses the JSON capability. You can either co
 In this case, as it is the default configuration, you only need to provide the apiKey.
 
 ```shell script
-./mvnw compile quarkus:dev -Dapi.nvd.key=<your_key>
+./mvnw compile quarkus:dev
 ```
 
 * Note: If you're having issues with Podman and TestContainers you can check the [Quarkus Blog](https://quarkus.io/blog/quarkus-devservices-testcontainers-podman/) and the [Quarkus Podman guide](https://quarkus.io/guides/podman)
@@ -143,7 +134,7 @@ podman run -d --rm -p 6379:6379 -p 8001:8001 --name redis-stack redis/redis-stac
 You can run your application in dev mode that enables live coding using:
 
 ```shell script
-./mvnw compile quarkus:dev -Dapi.nvd.key=<your_key> -Dquarkus.redis.hosts=redis://localhost:6379/
+./mvnw compile quarkus:dev -Dquarkus.redis.hosts=redis://localhost:6379/
 ```
 
 ## Packaging and running the application

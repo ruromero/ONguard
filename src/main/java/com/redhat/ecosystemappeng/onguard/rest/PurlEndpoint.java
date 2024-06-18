@@ -22,14 +22,13 @@ import java.util.List;
 import java.util.Map;
 
 import com.redhat.ecosystemappeng.onguard.model.PurlsRequest;
-import com.redhat.ecosystemappeng.onguard.model.Vulnerability;
+import com.redhat.ecosystemappeng.onguard.model.osv.OsvVulnerability;
 import com.redhat.ecosystemappeng.onguard.service.VulnerabilityService;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.QueryParam;
 
 @Path("/purls")
 public class PurlEndpoint {
@@ -38,10 +37,10 @@ public class PurlEndpoint {
     VulnerabilityService svc;
 
     @POST
-    public Uni<Map<String, List<Vulnerability>>> find(PurlsRequest request, @QueryParam("reload") boolean reload) {
+    public Uni<Map<String, List<OsvVulnerability>>> find(PurlsRequest request) {
         if(request == null || request.purls() == null || request.purls().isEmpty()) {
             return Uni.createFrom().item(Collections.emptyMap());
         }
-        return svc.findByPurls(request.purls(), reload);
+        return svc.findByPurls(request.purls());
     }
 }

@@ -19,7 +19,7 @@ LABEL io.k8s.description="Red Hat Trusted Profile Analyzer - ONGuard Service"
 LABEL io.k8s.display-name="RHTPA ONGuard service"
 LABEL io.openshift.tags="rhtpa exhort onguard"
 LABEL summary="The RHTPA ONGuard Service exposes an API for retrieving vulnerability data \
-from OSV and NVD databases"
+from OSV database"
 
 WORKDIR /work/
 COPY --from=build /code/target/*-runner /work/application

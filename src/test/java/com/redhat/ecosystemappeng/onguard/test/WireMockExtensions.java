@@ -17,13 +17,10 @@
  */
 package com.redhat.ecosystemappeng.onguard.test;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
-import static com.github.tomakehurst.wiremock.client.WireMock.serviceUnavailable;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -35,7 +32,6 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.redhat.ecosystemappeng.onguard.model.osv.PackageRef;
 import com.redhat.ecosystemappeng.onguard.model.osv.QueryRequest;
 import com.redhat.ecosystemappeng.onguard.model.osv.QueryRequestItem;
@@ -46,14 +42,7 @@ import jakarta.ws.rs.core.MediaType;
 public class WireMockExtensions implements QuarkusTestResourceLifecycleManager {
 
   public static final String CONTENT_TYPE = "Content-Type";
-  public static final String API_KEY_PARAM = "apiKey";
-  public static final String CVE_PARAM = "cveId";
-  public static final String NVD_API_KEY = "nvd-api-123";
-  public static final String VALID_CVE = "CVE-2022-24684";
-  public static final String ERROR_503_CVE = "FAIL_WITH_503";
-  public static final String NOT_FOUND = "not_found";
 
-  public static final String NVD_API_PATH = "/rest/json/cves/2.0";
   public static final String OSV_QUERY_API_PATH = "/v1/querybatch";
   public static final String OSV_VULN_API_PATH = "/v1/vulns/{id}";
 
@@ -66,49 +55,11 @@ public class WireMockExtensions implements QuarkusTestResourceLifecycleManager {
   public Map<String, String> start() {
     server.start();
 
-    stubNvd();
     stubOsv();
 
     Map<String, String> props = new HashMap<>();
-    props.put("quarkus.rest-client.nvd-api.url", server.baseUrl());
     props.put("quarkus.rest-client.osv-api.url", server.baseUrl());
-    props.put("api.nvd.apikey", NVD_API_KEY);
     return props;
-  }
-
-  private void stubNvd() {
-
-    server.stubFor(get(urlPathEqualTo(NVD_API_PATH))
-        .withHeader(API_KEY_PARAM, equalTo(NVD_API_KEY))
-        .withQueryParam("startIndex", equalTo("0"))
-        .withQueryParam("resultsPerPage", equalTo("200"))
-        .withQueryParam("lastModStartDate", equalTo("start_date"))
-        .withQueryParam("lastModEndDate", equalTo("end_date"))
-        .willReturn(ok().withBodyFile("nvd-data/" + VALID_CVE + ".json")
-            .withHeader(CONTENT_TYPE, MediaType.APPLICATION_JSON)));
-
-    server.stubFor(get(urlPathEqualTo(NVD_API_PATH))
-        .inScenario("List Retry")
-        .whenScenarioStateIs(Scenario.STARTED)
-        .withHeader(API_KEY_PARAM, equalTo(NVD_API_KEY))
-        .withQueryParam("startIndex", equalTo("10"))
-        .withQueryParam("resultsPerPage", equalTo("200"))
-        .withQueryParam("lastModStartDate", equalTo("start_date"))
-        .withQueryParam("lastModEndDate", equalTo("end_date"))
-        .willReturn(serviceUnavailable())
-        .willSetStateTo("Next"));
-
-    server.stubFor(get(urlPathEqualTo(NVD_API_PATH))
-        .inScenario("List Retry")
-        .whenScenarioStateIs("Next")
-        .withHeader(API_KEY_PARAM, equalTo(NVD_API_KEY))
-        .withQueryParam("startIndex", equalTo("10"))
-        .withQueryParam("resultsPerPage", equalTo("200"))
-        .withQueryParam("lastModStartDate", equalTo("start_date"))
-        .withQueryParam("lastModEndDate", equalTo("end_date"))
-        .willReturn(ok().withBodyFile("nvd-data/" + VALID_CVE + ".json")
-            .withHeader(CONTENT_TYPE, MediaType.APPLICATION_JSON)));
-
   }
 
   private void stubOsv() {
