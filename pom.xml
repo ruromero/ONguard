@@ -30,6 +30,7 @@
     <surefire-plugin.version>3.1.2</surefire-plugin.version>
     <license-maven-plugin.version>4.1</license-maven-plugin.version>
     <impsort-maven-plugin.version>1.9.0</impsort-maven-plugin.version>
+    <jsonschema2pojo-maven-plugin.version>1.2.1</jsonschema2pojo-maven-plugin.version>
 
     <!-- Dependencies -->
     <quarkus.platform.version>3.9.1</quarkus.platform.version>
@@ -235,6 +236,11 @@ limitations under the License.]]>
             </execution>
           </executions>
         </plugin>
+        <plugin>
+          <groupId>org.jsonschema2pojo</groupId>
+          <artifactId>jsonschema2pojo-maven-plugin</artifactId>
+          <version>${jsonschema2pojo-maven-plugin.version}</version>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -360,6 +366,25 @@ limitations under the License.]]>
       <plugin>
         <groupId>net.revelc.code</groupId>
         <artifactId>impsort-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.jsonschema2pojo</groupId>
+        <artifactId>jsonschema2pojo-maven-plugin</artifactId>
+        <configuration>
+            <sourcePaths>${basedir}/src/main/resources/schema/osv-1.6.3.json</sourcePaths>
+            <targetPackage>com.redhat.ecosystemappeng.onguard.model.osv</targetPackage>
+            <useTitleAsClassname>true</useTitleAsClassname>
+            <generateBuilders>true</generateBuilders>
+            <includeConstructors>true</includeConstructors>
+            <includeCopyConstructor>true</includeCopyConstructor>
+        </configuration>
+        <executions>
+            <execution>
+                <goals>
+                    <goal>generate</goal>
+                </goals>
+            </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

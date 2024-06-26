@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.redhat.ecosystemappeng.onguard.model.PurlsRequest;
-import com.redhat.ecosystemappeng.onguard.model.osv.OsvVulnerability;
+import com.redhat.ecosystemappeng.onguard.model.osv.OpenSourceVulnerability;
 import com.redhat.ecosystemappeng.onguard.service.VulnerabilityService;
 
 import io.smallrye.mutiny.Uni;
@@ -37,7 +37,7 @@ public class PurlEndpoint {
     VulnerabilityService svc;
 
     @POST
-    public Uni<Map<String, List<OsvVulnerability>>> find(PurlsRequest request) {
+    public Uni<Map<String, List<OpenSourceVulnerability>>> find(PurlsRequest request) {
         if(request == null || request.purls() == null || request.purls().isEmpty()) {
             return Uni.createFrom().item(Collections.emptyMap());
         }
