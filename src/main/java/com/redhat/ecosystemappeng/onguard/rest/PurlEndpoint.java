@@ -33,14 +33,23 @@ import jakarta.ws.rs.Path;
 @Path("/purls")
 public class PurlEndpoint {
 
-    @Inject
-    VulnerabilityService svc;
+  @Inject
+  VulnerabilityService svc;
 
-    @POST
-    public Uni<Map<String, List<OpenSourceVulnerability>>> find(PurlsRequest request) {
-        if(request == null || request.purls() == null || request.purls().isEmpty()) {
-            return Uni.createFrom().item(Collections.emptyMap());
-        }
-        return svc.findByPurls(request.purls());
+  @POST
+  public Uni<Map<String, List<OpenSourceVulnerability>>> find(PurlsRequest request) {
+    if (request == null || request.purls() == null || request.purls().isEmpty()) {
+      return Uni.createFrom().item(Collections.emptyMap());
     }
+    return svc.findByPurls(request.purls());
+  }
+
+  @POST
+  @Path("/cves")
+  public Uni<Map<String, List<String>>> findCves(PurlsRequest request) {
+    if (request == null || request.purls() == null || request.purls().isEmpty()) {
+      return Uni.createFrom().item(Collections.emptyMap());
+    }
+    return svc.findCvesByPurls(request.purls());
+  }
 }
